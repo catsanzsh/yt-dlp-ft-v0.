@@ -15,31 +15,22 @@ check_dependencies() {
     done
 }
 
-# Validate YouTube URL
-validate_url() {
-    local url=$1
-    if [[ ! "$url" =~ ^https://(www\.)?youtube\.com/(channel/|c/|user/|@) ]]; then
-        return 1
-    fi
-    return 0
-}
-
 # Create download directories
 setup_directories() {
-    local channel_name=$1
+    local channel_name="$1"
     mkdir -p "downloads/$channel_name/mp3"
     mkdir -p "downloads/$channel_name/mp4"
 }
 
-# Download function with error handling
+# Download content (mp3/mp4) with error handling
 download_content() {
-    local url=$1
-    local channel_name=$2
-    local format=$3
+    local url="$1"
+    local channel_name="$2"
+    local format="$3"
     local output_dir="downloads/$channel_name/$format"
-    
+
     echo "Downloading $format files from $url..."
-    
+
     if [ "$format" = "mp3" ]; then
         yt-dlp -f "bestaudio" \
             --extract-audio \
@@ -61,7 +52,6 @@ download_content() {
     fi
 }
 
-# Main script
 main() {
     # Check dependencies
     check_dependencies
@@ -77,29 +67,31 @@ main() {
             break
         fi
 
-        # Validate URL
-        if ! validate_url "$channel_url"; then
-            echo "Error: Invalid YouTube channel URL. Please try again."
+        # Basic sanity check: Ensure URL mentions youtube.com
+        # This is a loose check, allowing yt-dlp to handle various formats.
+        if [[ "$channel_url" != *"youtube.com"* ]]; then
+            echo "Error: Invalid YouTube URL. Please enter a YouTube channel URL."
             continue
         fi
 
-        # Get channel name from URL
+        # Get channel name from URL using yt-dlp
         channel_name=$(yt-dlp --get-filename -o "%(channel)s" "$channel_url" 2>/dev/null)
         if [ -z "$channel_name" ]; then
-            echo "Error: Could not fetch channel name."
+            echo "Error: Could not fetch channel name. Please verify the URL."
             continue
         fi
 
         # Setup directories
         setup_directories "$channel_name"
 
-        # Download content
         echo "Starting download for channel: $channel_name"
-        
+
+        # Download MP3 content
         if ! download_content "$channel_url" "$channel_name" "mp3"; then
             echo "Error: Failed to download MP3 content."
         fi
 
+        # Download MP4 content
         if ! download_content "$channel_url" "$channel_name" "mp4"; then
             echo "Error: Failed to download MP4 content."
         fi
@@ -110,7 +102,4 @@ main() {
     done
 }
 
-# Run main function
 main
-
-exit 0
